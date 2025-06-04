@@ -4,69 +4,70 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>¿Cuál es?</title>
-  <link rel="stylesheet" href="style.css" />
   <style>
     body {
       font-family: sans-serif;
-      padding: 20px;
       text-align: center;
+      background-color: #f0f0f0;
+      padding: 20px;
+    }
+    h1 {
+      font-size: 2em;
+      margin-bottom: 20px;
+    }
+    .category-button {
+      margin: 10px;
+      padding: 15px 30px;
+      font-size: 1.2em;
+      cursor: pointer;
+    }
+    #game-area {
+      display: none;
+      margin-top: 30px;
     }
     .option {
       display: block;
-      margin: 10px 0;
-      padding: 15px;
-      background-color: #eee;
-      border: 1px solid #ccc;
+      margin: 10px auto;
+      padding: 10px 20px;
+      font-size: 1.1em;
       cursor: pointer;
-      font-size: 18px;
+      width: 60%;
     }
-    .option.correct {
-      font-size: 24px;
+    .highlight {
+      font-size: 1.5em;
       font-weight: bold;
-      background-color: #c8f7c5;
+      color: green;
     }
-    .clue {
-      margin-top: 10px;
-      font-style: italic;
-      background: #f9f9f9;
-      padding: 8px;
+    #clues {
+      margin: 20px 0;
     }
-    #message {
+    #result {
       margin-top: 20px;
       font-weight: bold;
-    }
-    #score {
-      position: fixed;
-      top: 10px;
-      right: 10px;
-      background: #333;
-      color: white;
-      padding: 10px;
-      border-radius: 8px;
     }
   </style>
 </head>
 <body>
-  <h1>¿Cuál es?</h1>
-  <div id="score">Puntaje: 0</div>
 
-  <div id="menu">
-    <h2>Escoge una categoría</h2>
-    <button onclick="startCategory('Persona')">Persona</button>
-    <button onclick="startCategory('Lugar')">Lugar</button>
-    <button onclick="startCategory('Cosa')">Cosa</button>
+  <h1>¿Cuál es?</h1>
+  <div id="score">Puntuación: 0</div>
+
+  <div id="category-selection">
+    <button class="category-button" onclick="startGame('Persona')">Persona</button>
+    <button class="category-button" onclick="startGame('Lugar')">Lugar</button>
+    <button class="category-button" onclick="startGame('Cosa')">Cosa</button>
   </div>
 
-  <div id="game" style="display:none;">
-    <div id="category"></div>
+  <div id="game-area">
     <div id="clues"></div>
     <div id="options"></div>
-    <div id="message"></div>
-    <button onclick="nextCard()">Siguiente carta</button>
-    <button onclick="returnToMenu()">Volver al menú</button>
+    <div id="result"></div>
+    <div style="margin-top: 30px;">
+      <button onclick="nextCard()">Siguiente</button>
+      <button onclick="backToMenu()">Menú Principal</button>
+    </div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <script src="script.js"></script>
 </body>
 </html>
