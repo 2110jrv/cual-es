@@ -1,132 +1,139 @@
-let data = [];
-let currentCategory = '';
+let allData = [];
 let usedCards = [];
 let score = 0;
+let currentCard = null;
+let currentClues = [];
+let clueInterval = null;
+let clueIndex = 0;
 
-// Cargar datos desde Google Sheets
-async function fetchData() {
-  const url = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSZ2Gv13lNXpu9L9fPfnj1KK0l9cY6pIqHbzl9HJrXka0YmAbRQ7COtwtOuw2N_uz_ideE6XLaLZDGj/pub?output=csv';
-  const response = await fetch(url);
-  const text = await response.text();
-  const rows = text.split('\n').map(r => r.split(','));
-  const headers = rows[0];
-  data = rows.slice(1).map(row => {
-    let entry = {};
-    headers.forEach((h, i) => entry[h.trim()] = row[i]?.trim());
-    return entry;
-  });
-}
+// Google Sheets CSV URL
+const sheetUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSZ2Gv13lNXpu9L9fPfnj1KK0l9cY6pIqHbzl9HJrXka0YmAbRQ7COtwtOuw2N_uz_ideE6XLaLZDGj/pub?output=csv";
 
-function showCategories() {
-  const categories = [...new Set(data.map(d => d['Categoría']))];
-  const container = document.getElementById('categories');
-  container.innerHTML = '';
-  categories.forEach(cat => {
-    const btn = document.createElement('button');
-    btn.textContent = cat;
-    btn.onclick = () => startGame(cat);
-    container.appendChild(btn);
+// Load data on page load
+window.onload = () => {
+  fetch(sheetUrl)
+    .then(res => res.text())
+    .then(text => parseCSV(text));
+};
+
+function parseCSV(text) {
+  const rows = text.trim().split('\n').map(row => row.split(','));
+  const headers = rows.shift();
+  allData = rows.map(row => {
+    const obj = {};
+    headers.forEach((h, i) => {
+      obj[h.trim()] = row[i]?.trim();
+    });
+    return obj;
   });
 }
 
 function startGame(category) {
-  currentCategory = category;
-  const cards = data.filter(d => d['Categoría'] === category && !usedCards.includes(d['Respuesta']));
-  if (cards.length === 0) {
-    alert('Ya jugaste todas las cartas de esta categoría.');
+  document.getElementById("category-selection").style.display = "none";
+  document.getElementById("game-area").style.display = "block";
+  usedCards = [];
+  score = 0;
+  updateScore();
+  loadNextCard(category);
+}
+
+function loadNextCard(category) {
+  const available = allData.filter(card =>
+    card["Categoría"] === category &&
+    !usedCards.includes(card["Respuesta"])
+  );
+
+  if (available.length === 0) {
+    alert("No hay más cartas en esta categoría.");
+    backToMenu();
     return;
   }
 
-  const card = cards[Math.floor(Math.random() * cards.length)];
-  usedCards.push(card['Respuesta']);
-
-  playCard(card);
+  currentCard = available[Math.floor(Math.random() * available.length)];
+  usedCards.push(currentCard["Respuesta"]);
+  showCard(currentCard);
 }
 
-function playCard(card) {
-  const game = document.getElementById('game');
-  const categories = document.getElementById('categories');
-  categories.style.display = 'none';
-  game.style.display = 'block';
+function showCard(card) {
+  clueIndex = 0;
+  currentClues = shuffle([
+    card["Clave 1"],
+    card["Clave 2"],
+    card["Clave 3"],
+    card["Clave 4"]
+  ]);
+  document.getElementById("clues").innerHTML = "";
+  document.getElementById("result").textContent = "";
+  document.getElementById("options").innerHTML = "";
 
-  const options = [
-    card['Respuesta'],
-    card['Incorrecto 1'],
-    card['Incorrecto 2'],
-    card['Incorrecto 3'],
-  ].sort(() => Math.random() - 0.5);
-
-  const clues = [
-    card['Clave 1'],
-    card['Clave 2'],
-    card['Clave 3'],
-    card['Clave 4'],
-  ].sort(() => Math.random() - 0.5);
-
-  let clueIndex = 0;
-  let clueInterval;
-  let answered = false;
-  let timeLeft = 60;
-
-  const clueBox = document.getElementById('clues');
-  const optionsBox = document.getElementById('options');
-  const message = document.getElementById('message');
-  const scoreBox = document.getElementById('score');
-  const timerBox = document.getElementById('timer');
-
-  clueBox.innerHTML = '';
-  optionsBox.innerHTML = '';
-  message.innerHTML = '';
-  scoreBox.textContent = `Puntaje: ${score}`;
-  timerBox.textContent = `⏱️ Tiempo: ${timeLeft}s`;
+  const options = shuffle([
+    card["Respuesta"],
+    card["Incorrecto 1"],
+    card["Incorrecto 2"],
+    card["Incorrecto 3"]
+  ]);
 
   options.forEach(opt => {
-    const btn = document.createElement('button');
+    const btn = document.createElement("button");
     btn.textContent = opt;
-    btn.onclick = () => {
-      if (answered) return;
-      answered = true;
-      clearInterval(clueInterval);
-      clearInterval(timerInterval);
-      if (opt === card['Respuesta']) {
-        score += 1;
-        btn.style.fontSize = '1.5rem';
-        message.innerHTML = '✅ ¡Correcto!';
-      } else {
-        score -= 1;
-        message.innerHTML = '❌ No es la respuesta correcta.';
-      }
-      scoreBox.textContent = `Puntaje: ${score}`;
-    };
-    optionsBox.appendChild(btn);
+    btn.className = "option";
+    btn.onclick = () => chooseAnswer(opt);
+    document.getElementById("options").appendChild(btn);
   });
 
-  // Mostrar pistas cada 10 segundos
   clueInterval = setInterval(() => {
-    if (clueIndex < clues.length) {
-      const p = document.createElement('p');
-      p.textContent = clues[clueIndex];
-      clueBox.appendChild(p);
+    if (clueIndex < currentClues.length) {
+      const clueDiv = document.createElement("div");
+      clueDiv.textContent = currentClues[clueIndex];
+      document.getElementById("clues").appendChild(clueDiv);
       clueIndex++;
-    }
-  }, 10000);
-
-  // Contador de tiempo
-  const timerInterval = setInterval(() => {
-    timeLeft--;
-    timerBox.textContent = `⏱️ Tiempo: ${timeLeft}s`;
-    if (timeLeft === 0 && !answered) {
-      answered = true;
+    } else {
       clearInterval(clueInterval);
-      clearInterval(timerInterval);
-      message.innerHTML = '⏰ ¡Se acabó el tiempo!';
+      setTimeout(() => {
+        document.getElementById("result").textContent = "⏰ Se acabó el tiempo.";
+        document.getElementById("result").style.color = "black";
+      }, 1000);
     }
-  }, 1000);
+  }, 10000); // 10 seconds per clue
 }
 
-// Iniciar todo
-window.onload = async () => {
-  await fetchData();
-  showCategories();
-};
-Add game logic script
+function chooseAnswer(answer) {
+  clearInterval(clueInterval);
+  const buttons = document.querySelectorAll(".option");
+  buttons.forEach(btn => {
+    btn.disabled = true;
+    if (btn.textContent === currentCard["Respuesta"]) {
+      btn.classList.add("highlight");
+    }
+  });
+
+  if (answer === currentCard["Respuesta"]) {
+    document.getElementById("result").textContent = "✅ ¡Correcto!";
+    document.getElementById("result").style.color = "green";
+    score++;
+  } else {
+    document.getElementById("result").textContent = "❌ Incorrecto.";
+    document.getElementById("result").style.color = "red";
+    score--;
+  }
+  updateScore();
+}
+
+function nextCard() {
+  if (currentCard) {
+    loadNextCard(currentCard["Categoría"]);
+  }
+}
+
+function backToMenu() {
+  document.getElementById("category-selection").style.display = "block";
+  document.getElementById("game-area").style.display = "none";
+}
+
+function updateScore() {
+  document.getElementById("score").textContent = `Puntuación: ${score}`;
+}
+
+function shuffle(array) {
+  return array.sort(() => Math.random() - 0.5);
+}
